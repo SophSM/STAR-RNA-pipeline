@@ -1,0 +1,404 @@
+---
+title: "alternate RNA pipeline"
+author: "Sofia Salazar"
+date: "2022-11-08"
+output: html_document
+---
+
+## Setup
+
+```{bash}
+ssh -Y ssalazar@dna.lavis.unam.mx
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files
+module load sra/3.0.0
+module load fastqc/0.11.3
+module load trimmomatic/0.33
+module load salmon/0.14.0
+module load r/4.0.2
+module load gcc/8.3.0
+module load star/2.7.9a
+module load load multiqc/1.5
+
+mkdir -p SRP111941 SRP168421 SRP296987 SRP311059 SRP322015
+
+# Command for submitting a qsub with more cores (faster):
+# qsub -pe openmp 60
+```
+
+## Data download
+
+Most fastq files were already downloaded
+
+```{bash}
+cd SRP111941/fastq_files
+mv /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP111941/sequences/*.fastq.gz .
+cd ../../SRP296987/fastq_files
+mv /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP296987/sequences/*.fastq.gz .
+cd ../../SRP168421/fastq_files
+mv /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP168421/sequences/*.fastq.gz .
+cd ../../SRP311059/fastq_files
+mv /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP311059/sequences/*.fastq.gz .
+cd ../../SRP322015/fastq_files
+mv /mnt/Citosina/amedina/ssalazar/meta/data/fastq/SRP322015/sequences/*.fastq.gz .
+```
+
+## Quality check
+
+This is done before any trimming, and then after trimming, with modules fastqc and multiqc for agregation of fastqc reports for each study
+
+```{bash}
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files
+for i in SRP*;
+do 
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i
+mkdir quality
+for file in /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i/fastq_files/*.fastq.gz; do fastqc $file -o /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i/quality; done
+done 
+
+# multiqc on the html files of fastqc
+for i in SRP*;
+do
+multiqc /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i/quality
+done
+```
+
+## Trimming
+
+Used tool trimmomatic, the output yields 4 fastq files, the left and right paired reads, the left forward unpaired reads, and the right reverse unpaired reads.
+
+For this step, I used a different command for each study
+
+```{bash}
+# SRP111941
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/fastq_files
+mkdir /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/TRIM_results
+for i in *;
+do echo
+trimmomatic SE -threads 2 -phred33 $i ../TRIM_results/"${i%.fastq}_trimmed.fq.gz" ILLUMINACLIP:../Illumina_Adapters_SE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:35
+done
+
+######
+
+# SRP322015
+
+mkdir /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/TRIM_results
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/fastq_files
+for i in *_1.fastq.gz;
+do echo
+trimmomatic PE -threads 8 -phred33 $i "${i%_1.fastq.gz}_2.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_1_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_1_unpaired.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_2_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_2_unpaired.fastq.gz" \
+ILLUMINACLIP:/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/adapters-paired.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:66
+done
+
+######
+
+# SRP311059
+mkdir /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/TRIM_results
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/fastq_files
+for i in *_1.fastq.gz;
+do echo
+trimmomatic PE -threads 8 -phred33 $i "${i%_1.fastq.gz}_2.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_1_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_1_unpaired.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_2_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_2_unpaired.fastq.gz" \
+ILLUMINACLIP:/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/adapters-paired.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:66
+done
+
+######
+
+# SRP296987
+mkdir /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/TRIM_results
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/fastq_files
+for i in *_1.fastq.gz;
+do echo
+trimmomatic PE -threads 8 -phred33 $i "${i%_1.fastq.gz}_2.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_1_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_1_unpaired.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_2_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_2_unpaired.fastq.gz" \
+ILLUMINACLIP:/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/adapters-paired.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:76
+done
+
+######
+
+# SRP168421
+mkdir /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/TRIM_results
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/fastq_files
+for i in *_1.fastq.gz;
+do echo
+trimmomatic PE -threads 8 -phred33 $i "${i%_1.fastq.gz}_2.fastq.gz" \
+../TRIM_results/"${i%_1.fastq.gz}_1_trimmed.fastq.gz" ../TRIM_results/"${i%_1.fastq.gz}_1_unpaired.fastq.gz" \
+../TRIM_results/"${i%_2.fastq.gz}_2_trimmed.fastq.gz" ../TRIM_results/"${i%_2.fastq.gz}_2_unpaired.fastq.gz" \
+ILLUMINACLIP:/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/adapters-paired.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:76
+done
+
+######
+
+```
+
+## QC of trimming
+
+```{bash}
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files
+for i in SRP*;
+do 
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i
+mkdir quality_trimmed
+for file in /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i/TRIM_results/*.fq.gz; do fastqc $file -o /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/$i/quality_trimmed; done
+done
+
+multiqc quality_trimmed
+```
+
+
+## Alignment with STAR
+
+https://research.stowers.org/cws/CompGenomics/Projects/star.html
+
+### Creating STAR index
+
+```{bash}
+STAR --runThreadN 8 \
+--runMode genomeGenerate \
+--genomeDir  /mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index \
+--genomeFastaFiles /mnt/Archives/genome/human/GRCh38/ensembl76/chromosomes/Homo_sapiens.GRCh38.dna.primary_assembly.fa \
+--sjdbGTFfile /mnt/Archives/genome/human/GRCh38/ensembl76/GTF-file/Homo_sapiens.GRCh38.76.gtf \
+--sjdbOverhang 99
+
+
+# STAR --runThreadN 8 \
+# --runMode genomeGenerate \
+# --genomeDir  /mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index \
+# --genomeFastaFiles /mnt/Archives/genome/human/hg38/UCSC/Homo_sapiens/UCSC/hg38/Sequence/WholeGenomeFasta/genome.fa # \
+# --sjdbGTFfile /mnt/Archives/genome/human/GRCh38/ensembl76/GTF-file/Homo_sapiens.GRCh38.76.gtf \
+# --sjdbOverhang 99
+```
+
+## Alignment
+
+For this step, I used a different bash script for each study
+
+For the paired end studies, I aligned the unpaired reads sepparatedly from the paired reads
+
+```{bash}
+# SRP111941
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/TRIM_results/*.fq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f .fq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/STAR_output/$base"_"
+done
+
+echo "done!"
+
+#######
+
+# SRP296987
+
+#paired end reads
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/TRIM_results/*1_trimmed.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_trimmed.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/TRIM_results/$base"_2_trimmed.fastq.gz" --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_pe/$base"_"
+done
+
+###
+
+#single end reads
+
+# forward
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/TRIM_results/*1_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_se1/$base"_"
+done
+
+##
+
+# reverse
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/TRIM_results/*2_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _2_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_se2/$base"_"
+done
+
+##
+
+# SRP311059
+
+# paired end reads
+
+# !/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/TRIM_results/*1_trimmed.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_trimmed.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/TRIM_results/$base"_2_trimmed.fastq.gz" --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_pe/$base"_"
+done
+
+##
+
+# single end reads
+
+# forward
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/TRIM_results/*1_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_se1/$base"_"
+done
+
+## 
+# reverse
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/TRIM_results/*2_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _2_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_se2/$base"_"
+done
+
+##
+
+# SRP322015
+
+# paired end reads
+
+# !/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/TRIM_results/*1_trimmed.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_trimmed.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/TRIM_results/$base"_2_trimmed.fastq.gz" --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_pe/$base"_"
+done
+
+##
+
+#single end reads
+
+# forward
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/TRIM_results/*1_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se1/$base"_"
+done
+
+## 
+
+# reverse
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/TRIM_results/*2_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _2_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 20 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se2/$base"_"
+done
+
+#########
+
+# SRP168421
+
+# paired end reads
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/TRIM_results/*1_trimmed.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_trimmed.fastq.gz)
+    echo $base
+    STAR --runThreadN 30 --genomeDir $index --readFilesIn $f /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/TRIM_results/$base"_2_trimmed.fastq.gz" --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_pe/$base"_"
+done
+
+## 
+
+#single end reads
+
+# forward
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/TRIM_results/*1_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _1_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 10 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_se1/$base"_"
+done
+
+## 
+# reverse
+
+#!/bin/bash
+index=/mnt/Citosina/amedina/ssalazar/meta/RNA2/STAR_index
+FILES=/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/TRIM_results/*2_unpaired.fastq.gz
+for f in $FILES
+do
+    echo $f
+    base=$(basename $f _2_unpaired.fastq.gz)
+    echo $base
+    STAR --runThreadN 9 --genomeDir $index --readFilesIn $f --outSAMtype BAM SortedByCoordinate \
+         --quantMode GeneCounts --readFilesCommand zcat --outFileNamePrefix /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se2/$base"_"
+done
+```
+
+

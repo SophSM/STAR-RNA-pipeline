@@ -1,0 +1,287 @@
+---
+title: "Normalization and batch correction"
+author: "Sofia Salazar"
+date: "2022-11-13"
+output: html_document
+---
+
+## Setup
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/out
+module load r/4.0.2
+R
+```
+
+## Libraries
+
+```{r}
+library("edgeR")
+library(tidyverse)
+library("sva")
+library("SummarizedExperiment")
+library(limma)
+library(ggplot2)
+```
+
+
+## Loading data
+
+```{r}
+summary <- read_csv("/mnt/Citosina/amedina/ssalazar/meta/RNA2/summary.csv")
+curation <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/RNA2/curated_rse.xz")
+output <- list()
+names <- summary$SRA
+```
+
+## Expression boxplot pre-normalization
+
+```{r eval=FALSE}
+# Now we can plot the expression for each sample:
+png("/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/PCpre-11.png")
+boxplot(assays(curation[[1]])$counts+1, las = 2, col = c(rep("#005AB5" ,3), rep("#DC3220",3)), ylim=c(-10,1000))
+dev.off()
+
+dat <- curation[[1]]
+ggplot(assays(dat)$counts, aes(x = as.factor(dat$DISEASE), y = )) + 
+geom_boxplot(aes(fill = supp), position = position_dodge(0.9)) +
+scale_fill_manual(values = c("#09E359", "#E31009")) + 
+theme_bw()
+
+```
+
+## PCA plots pre-normalization
+
+```{r}
+for (i in 1:length(curation)){
+  png(file = str_c("/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/figures/PCpre", names[i], ".png"), width = 800, height = 800)
+
+  plotMDS(curation[[i]], labels = curation[[i]]$DISEASE, col=ifelse(curation[[i]]$DISEASE=="CONTROL","blue","red"), top=200, gene.selection="common", prior.count = 5)
+  dev.off()
+}
+```
+
+## Batch correction and normalizing
+
+Function for normalizing with TMM
+
+```{r}
+get_dge <- function(rse){
+  dge <- DGEList(counts = assay(rse, "counts"), genes = rowData(rse))
+  # Filtering out rows with zero or very low counts
+  design <- model.matrix(~ DISEASE, data = colData(rse))
+  keep <- filterByExpr(dge, design)
+  dge <- dge[keep,,keep.lib.sizes=FALSE]
+  # normalizing
+  dge <- calcNormFactors(dge, method = "TMM")
+  dge <- cpm(dge)
+  return(dge)
+}
+```
+
+*for SRP111941*
+
+```{r eval=FALSE}
+rse_object <- curation[[1]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP111941.tsv", header = T, sep= '\t')
+pheno <- sra_info[, c(1, 2)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(subject_status), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(dge_result, mod, mod0) # significant surrogate variables 2
+design <- cbind(mod, svobj$sv) # design matrix
+output[[1]] <- dge_result
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP111941.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP111941.xz", compress="xz")
+
+```
+
+*for SRP168421*
+
+```{r}
+rse_object <- curation[[2]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP168421.tsv", header = T, sep= '\t')
+pheno <- sra_info[, c(1, 2)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(disease), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(dge_result, mod, mod0) # significant surrogate variables 6
+design <- cbind(mod, svobj$sv) # design matrix
+output[[2]] <- dge_result
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP168421.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP168421.xz", compress="xz")
+
+```
+
+*for SRP296987*
+
+```{r}
+rse_object <- curation[[3]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP296987.tsv", header = T, sep= '\t')
+pheno <- sra_info[, c(1, 2)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(source_name), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(dge_result, mod, mod0) # significant surrogate variables 2
+design <- cbind(mod, svobj$sv) # design matrix
+output[[3]] <-dge_result
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP296987.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP296987.xz", compress="xz")
+
+```
+
+*for SRP311059*
+
+```{r}
+rse_object <- curation[[4]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP311059.tsv", header = T, sep= '\t')
+pheno <- sra_info[, c(1, 2)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(Diagnosis), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(dge_result, mod, mod0) # significant surrogate variables 4
+design <- cbind(mod, svobj$sv) # design matrix
+output[[4]] <-dge_result
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP311059.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP311059.xz", compress="xz")
+
+```
+
+*for SRP322015*
+
+```{r}
+rse_object <- curation[[5]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP322015.tsv", header = T, sep= '\t')
+pheno <- sra_info[, c(1, 2)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(source_name), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(dge_result, mod, mod0) # significant surrogate variables 3
+design <- cbind(mod, svobj$sv) # design matrix
+output[[5]] <- dge_result
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP322015.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP322015.xz", compress="xz")
+
+```
+
+*for SRP062966*
+
+```{r}
+rse_object <- curation[[6]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP062966.tsv", header = T, sep= '\t')
+pheno <- sra_info[, c(1, 14)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(disease_status), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(dge_result, mod, mod0) # significant surrogate variables 13
+design <- cbind(mod, svobj$sv) # design matrix
+output[[6]] <- dge_result
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP062966.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP062966.xz", compress="xz")
+
+```
+
+*for SRP073191*
+
+```{r}
+rse_object <- curation[[7]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP073191.tsv", header = T, sep= ',')
+pheno <- sra_info[, c(1, 13)] # phenotype info
+# normalizing
+dge_result <- get_dge(rse_object)
+mod <- model.matrix(~as.factor(disease_state), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(cpm(dge_result), mod, mod0) # significant surrogate variables 4
+design <- cbind(mod, svobj$sv)
+output[[7]] <- design
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP073191.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP073191.xz", compress="xz")
+
+```
+
+```{r}
+# SRP136102
+rse<- curation[[8]]
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP136102.tsv", header = T, sep= ',')
+pheno <- sra_info[, c(1, 24)]
+# normalizing
+dge_result <- get_dge(rse)
+mod <- model.matrix(~as.factor(phenotype), data=pheno)
+mod0 <- model.matrix(~1,data=pheno) # null model
+svobj <- svaseq(cpm(dge_result), mod, mod0) # significant surrogate variables 14
+design <- cbind(mod, svobj$sv)
+dge_result <- get_dge(rse)
+output[[8]] <- design
+saveRDS(dge_result, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/dge-SRP136102.xz", compress="xz")
+saveRDS(design, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/out/design-SRP136102.xz", compress="xz")
+```
+
+```{r}
+sessionInfo()
+R version 4.0.2 (2020-06-22)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: CentOS Linux 7 (Core)
+
+Matrix products: default
+BLAS:   /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRblas.so
+LAPACK: /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRlapack.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] SummarizedExperiment_1.20.0 Biobase_2.50.0             
+ [3] GenomicRanges_1.42.0        GenomeInfoDb_1.26.7        
+ [5] IRanges_2.24.1              S4Vectors_0.28.1           
+ [7] BiocGenerics_0.36.1         MatrixGenerics_1.2.1       
+ [9] matrixStats_0.60.0          sva_3.38.0                 
+[11] BiocParallel_1.24.1         genefilter_1.72.1          
+[13] mgcv_1.8-33                 nlme_3.1-151               
+[15] forcats_0.5.1               stringr_1.4.0              
+[17] dplyr_1.0.3                 purrr_0.3.4                
+[19] readr_1.4.0                 tidyr_1.1.2                
+[21] tibble_3.1.3                ggplot2_3.3.5              
+[23] tidyverse_1.3.0             edgeR_3.32.1               
+[25] limma_3.46.0               
+
+loaded via a namespace (and not attached):
+ [1] bitops_1.0-7           fs_1.5.0               lubridate_1.7.9.2     
+ [4] bit64_4.0.5            httr_1.4.2             tools_4.0.2           
+ [7] backports_1.2.1        utf8_1.2.2             R6_2.5.0              
+[10] DBI_1.1.1              colorspace_2.0-2       withr_2.4.2           
+[13] tidyselect_1.1.0       bit_4.0.4              compiler_4.0.2        
+[16] cli_3.0.1              rvest_0.3.6            xml2_1.3.2            
+[19] DelayedArray_0.16.3    scales_1.1.1           XVector_0.30.0        
+[22] pkgconfig_2.0.3        dbplyr_2.0.0           fastmap_1.1.0         
+[25] rlang_0.4.11           readxl_1.3.1           rstudioapi_0.13       
+[28] RSQLite_2.2.7          generics_0.1.0         jsonlite_1.7.2        
+[31] RCurl_1.98-1.3         magrittr_2.0.1         GenomeInfoDbData_1.2.4
+[34] Matrix_1.3-4           Rcpp_1.0.7             munsell_0.5.0         
+[37] fansi_0.5.0            lifecycle_1.0.0        stringi_1.6.2         
+[40] zlibbioc_1.36.0        grid_4.0.2             blob_1.2.1            
+[43] crayon_1.4.1           lattice_0.20-41        haven_2.3.1           
+[46] splines_4.0.2          annotate_1.68.0        hms_1.1.0             
+[49] locfit_1.5-9.4         pillar_1.6.2           reprex_1.0.0          
+[52] XML_3.99-0.6           glue_1.4.2             modelr_0.1.8          
+[55] vctrs_0.3.8            cellranger_1.1.0       gtable_0.3.0          
+[58] assertthat_0.2.1       cachem_1.0.5           xtable_1.8-4          
+[61] broom_0.7.9            survival_3.2-7         AnnotationDbi_1.52.0  
+[64] memoise_2.0.0          ellipsis_0.3.2     
+```
+

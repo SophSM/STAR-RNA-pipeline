@@ -1,0 +1,357 @@
+---
+title: "Counts"
+author: "Sofia Salazar"
+date: "2022-11-10"
+output: html_document
+---
+
+## Setup
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files
+module load r/4.0.2
+R
+```
+
+## Libraries
+
+```{r}
+library("recount3")
+```
+
+## Obtaining the count matrixes for each studies
+
+For SRP111941, as it is a single-ended library, we only get the count matrix from a single folder, however, for the other remaining studies, we have pair ended libraries and we have three folders with counts, first for the paired reads, for the forward unpaired reads and the reverse unpaired reads which were generated through the trimming step.
+
+```{r}
+# SRP111941
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/STAR_output")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+counts <- as.data.frame(counts)
+# Assigning the rows a name (the ID)
+rownames(counts) <- x[,1]
+
+# Assinging the columns a name
+# set the column names
+colnames(counts) <- sub(".fastq.*", "", files)
+
+# saving the counts
+save(counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP111941-counts.RData")
+```
+
+
+```{r}
+# SRP296987
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+rownames(counts) <- x[,1]
+colnames(counts) <- sub(".fastq.*", "", files)
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+rownames(counts1) <- x[,1]
+colnames(counts1) <- sub(".fastq.*", "", files)
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+rownames(counts2) <- x[,1]
+colnames(counts2) <- sub(".fastq.*", "", files)
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+total.counts <- (counts + counts1)
+total.counts <- as.data.frame(total.counts + counts2)
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP296987-counts.RData")
+```
+
+```{r}
+# SRP311059
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+rownames(counts) <- x[,1]
+colnames(counts) <- sub(".fastq.*", "", files)
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+rownames(counts1) <- x[,1]
+colnames(counts1) <- sub(".fastq.*", "", files)
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+rownames(counts2) <- x[,1]
+colnames(counts2) <- sub(".fastq.*", "", files)
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+tail(counts,1)
+tail(counts1,1)
+total.counts <- (counts + counts1)
+tail(total.counts,1)
+total.counts <- as.data.frame(total.counts + counts2)
+tail(counts2,1)
+tail(total.counts,1)
+
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP311059-counts.RData")
+```
+
+
+```{r}
+# SRP322015
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+rownames(counts) <- x[,1]
+colnames(counts) <- sub(".fastq.*", "", files)
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+rownames(counts1) <- x[,1]
+colnames(counts1) <- sub(".fastq.*", "", files)
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+rownames(counts2) <- x[,1]
+colnames(counts2) <- sub(".fastq.*", "", files)
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+tail(counts,1)
+tail(counts1,1)
+total.counts <- (counts + counts1)
+tail(total.counts,1)
+total.counts <- as.data.frame(total.counts + counts2)
+tail(counts2,1)
+tail(total.counts,1)
+
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP322015-counts.RData")
+```
+
+```{r}
+# SRP168421
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+rownames(counts) <- x[,1]
+colnames(counts) <- sub(".fastq.*", "", files)
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+rownames(counts1) <- x[,1]
+colnames(counts1) <- sub(".fastq.*", "", files)
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+rownames(counts2) <- x[,1]
+colnames(counts2) <- sub(".fastq.*", "", files)
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+tail(counts,1)
+tail(counts1,1)
+total.counts <- (counts + counts1)
+tail(total.counts,1)
+total.counts <- as.data.frame(total.counts + counts2)
+tail(counts2,1)
+tail(total.counts,1)
+
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP168421-counts.RData")
+```
+
+
+## Recount3 studies
+
+```{r}
+getRecountavail <- function(SRA){
+      # Getting the project
+    rse <- create_rse(subset(human_projects, project == SRA & project_type == "data_sources"))
+    # Expanding SRA attributes from the sra.sample_attributes variable in the colData() slot of the RangedSummarizedExperiment-class produced by create_rse().
+    rse <- expand_sra_attributes(rse)
+    #rse <- create_rse(hp[hp$project == SRA,])
+  # Getting read counts, scaling taking into account the total base-pair coverage for the given sample by using the area under the coverage (AUC).
+  assays(rse)$counts <- transform_counts(rse)
+  return(rse)
+}
+```
+
+```{r}
+recount.studies<-c("SRP062966","SRP073191","SRP136102")
+human_projects <- available_projects()
+downloads <- sapply(recount.studies, getRecountavail)
+saveRDS(downloads, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/recount-downloads.xz", compress="xz")
+```
+
+
+## Output
+
+The output files are in `/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP*-counts.RData` & `/mnt/Citosina/amedina/ssalazar/meta/RNA2/recount-downloads.xz`
+
+## Session Info
+
+```{r}
+sessionInfo()
+R version 4.0.2 (2020-06-22)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: CentOS Linux 7 (Core)
+
+Matrix products: default
+BLAS:   /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRblas.so
+LAPACK: /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRlapack.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] recount3_1.0.7              SummarizedExperiment_1.20.0
+ [3] Biobase_2.50.0              GenomicRanges_1.42.0       
+ [5] GenomeInfoDb_1.26.7         IRanges_2.24.1             
+ [7] S4Vectors_0.28.1            BiocGenerics_0.36.1        
+ [9] MatrixGenerics_1.2.1        matrixStats_0.60.0         
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.1.0         purrr_0.3.4              lattice_0.20-41         
+ [4] vctrs_0.3.8              generics_0.1.0           BiocFileCache_1.14.0    
+ [7] rtracklayer_1.50.0       utf8_1.2.2               blob_1.2.1              
+[10] XML_3.99-0.6             rlang_0.4.11             R.oo_1.24.0             
+[13] pillar_1.6.2             withr_2.4.2              glue_1.4.2              
+[16] DBI_1.1.1                R.utils_2.10.1           BiocParallel_1.24.1     
+[19] rappdirs_0.3.3           bit64_4.0.5              dbplyr_2.0.0            
+[22] sessioninfo_1.1.1        GenomeInfoDbData_1.2.4   lifecycle_1.0.0         
+[25] zlibbioc_1.36.0          Biostrings_2.58.0        R.methodsS3_1.8.1       
+[28] memoise_2.0.0            fastmap_1.1.0            curl_4.3.2              
+[31] fansi_0.5.0              Rcpp_1.0.7               cachem_1.0.5            
+[34] DelayedArray_0.16.3      XVector_0.30.0           bit_4.0.4               
+[37] Rsamtools_2.6.0          dplyr_1.0.3              grid_4.0.2              
+[40] cli_3.0.1                tools_4.0.2              bitops_1.0-7            
+[43] magrittr_2.0.1           RCurl_1.98-1.3           RSQLite_2.2.7           
+[46] tibble_3.1.3             crayon_1.4.1             pkgconfig_2.0.3         
+[49] ellipsis_0.3.2           Matrix_1.3-4             data.table_1.14.0       
+[52] rstudioapi_0.13          assertthat_0.2.1         httr_1.4.2              
+[55] R6_2.5.0                 GenomicAlignments_1.26.0 compiler_4.0.2
+```
+

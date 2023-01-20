@@ -1,0 +1,274 @@
+---
+title: "Curation"
+author: "Sofia Salazar"
+date: "2022-11-12"
+output: html_document
+---
+
+## Setup
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files
+module load r/4.0.2
+R
+```
+
+## Libraries 
+
+```{r}
+library(tidyverse)
+library(SummarizedExperiment)
+library("recount3")
+```
+
+## Loading data
+
+```{r}
+SRA_projects <- scan(file = "/mnt/Citosina/amedina/ssalazar/meta/data/SRA-IDs.txt", character(), sep=",")
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2")
+files <- dir(pattern="counts.RData")
+curation <- list()
+recount.downloads <- readRDS("/mnt/Citosina/amedina/ssalazar/meta/RNA2/recount-downloads.xz")
+```
+
+Function to obtain metadata information of each study.
+
+```{r}
+obtainInfo <- function(df, rse, name){
+  df<- df %>%add_row(
+    "SRA" = name,
+    "CONTROL" = as.numeric(table(rse$DISEASE)[1]),
+    "SLE" = as.numeric(table(rse$DISEASE)[2]),
+    "NUM_GENES" = as.numeric(table((assays(rse)$counts != 0))["TRUE"])
+  )
+}
+df <- tibble("SRA"= NA,
+             "CONTROL" = NA,
+             "SLE" = NA,
+             "NUM_GENES" = NA)
+```
+
+## Manual curation of each study
+
+```{r}
+# SRP111941
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP111941.tsv", header = T, sep= '\t')
+dat <- files[1]
+load(dat)
+rse <- SummarizedExperiment(assays=list(counts = counts))
+# metadata
+sra_info$subject_status <- as.factor(sra_info$subject_status)
+rse$DISEASE <- factor(ifelse(sra_info$subject_status == "SLE patient", "SLE", "CONTROL"))
+table(rse$DISEASE)
+
+df<- obtainInfo(df, rse = rse, name="SRP111941")
+curation[1] <- rse
+```
+
+
+```{r}
+# SRP168421
+rm(dat)
+dat <- files[2]
+load(dat)
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP168421.tsv", header = T, sep= '\t')
+load("SRP168421-counts.RData")
+rse <- SummarizedExperiment(assays=list(counts = total.counts))
+colnames(rse) <-  gsub("\\_.*","", colnames(rse))
+# metadata
+sra_info$disease <- as.factor(sra_info$disease)
+rse$DISEASE <- factor(ifelse(sra_info$disease == "systemic lupus erythematosus", "SLE", "CONTROL"))
+table(rse$DISEASE)
+
+df<- obtainInfo(df, rse = rse, name="SRP168421")
+curation[2] <- rse
+```
+
+```{r}
+# SRP296987
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP296987.tsv", header = T, sep= '\t')
+rm(dat)
+dat <- files[3]
+load(dat)
+rse <- SummarizedExperiment(assays=list(counts = total.counts))
+colnames(rse) <-  gsub("\\_.*","", colnames(rse))
+# metadata
+sra_info$source_name <- as.factor(sra_info$source_name)
+rse$DISEASE <- factor(ifelse(sra_info$source_name == "systemic lupus erythematosus", "SLE", "CONTROL"))
+table(rse$DISEASE)
+df<- obtainInfo(df, rse = rse, name="SRP296987")
+curation[3] <- rse
+```
+
+```{r}
+# SRP311059
+rm(dat)
+dat <- files[4]
+load(dat)
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP311059.tsv", header = T, sep= '\t')
+
+rse <- SummarizedExperiment(assays=list(counts = total.counts))
+colnames(rse) <-  gsub("\\_.*","", colnames(rse))
+# metadata
+sra_info$Diagnosis <- as.factor(sra_info$Diagnosis)
+rse$DISEASE <- factor(ifelse(sra_info$Diagnosis == "SLE patient", "SLE", "CONTROL"))
+table(rse$DISEASE)
+df<- obtainInfo(df, rse = rse, name="SRP311059")
+curation[4]<-rse
+```
+
+```{r}
+# SRP322015
+rm(dat)
+dat <- files[5]
+load(dat)
+sra_info <- read.delim(file = "/mnt/Citosina/amedina/ssalazar/meta/data/info-SRP322015.tsv", header = T, sep= '\t')
+
+rse <- SummarizedExperiment(assays=list(counts = total.counts))
+colnames(rse) <-  gsub("\\_.*","", colnames(rse))
+# metadata
+sra_info$source_name <- as.factor(sra_info$source_name)
+rse$DISEASE <- factor(ifelse(sra_info$source_name == "Tibetan SLE patients", "SLE", "CONTROL"))
+table(rse$DISEASE)
+df<- obtainInfo(df, rse = rse, name="SRP322015")
+curation[5]<- rse
+```
+
+
+```{r}
+# SRP062966
+rm(dat)
+rse<- recount.downloads[[1]]
+
+rse$sra_attribute.disease_status
+rse$sra_attribute.disease <- as.factor(rse$sra_attribute.disease_status)
+# creating a DISEASE column
+rse$DISEASE <- factor(ifelse(rse$sra_attribute.disease_status == "systemic lupus erythematosus (SLE)", "SLE", "CONTROL"))
+table(rse$DISEASE)
+assays(rse)$counts <- transform_counts(rse)
+df<- obtainInfo(df, rse = rse, name="SRP062966")
+curation[6] <- rse
+```
+
+```{r}
+# SRP073191
+rse<- recount.downloads[[2]]
+
+rse$sra_attribute.disease_state
+rse$sra_attribute.disease_state <- as.factor(rse$sra_attribute.disease_state)
+# creating a DISEASE column
+rse$DISEASE <- factor(ifelse(rse$sra_attribute.disease_state == "Systemic lupus erythematosus", "SLE", "CONTROL"))
+table(rse$DISEASE)
+assays(rse)$counts <- transform_counts(rse)
+
+df<- obtainInfo(df, rse = rse, name="SRP073191")
+curation[7] <- rse
+```
+
+```{r}
+# SRP136102
+rse<- recount.downloads[[3]]
+
+rse$sra_attribute.phenotype
+rse$sra_attribute.phenotype <- as.factor(rse$sra_attribute.phenotype)
+
+rse$DISEASE <- factor(ifelse(rse$sra_attribute.phenotype == "SLE", "SLE", "CONTROL"))
+assays(rse)$counts <- transform_counts(rse)
+df<- obtainInfo(df, rse = rse, name="SRP136102")
+curation[8] <- rse
+```
+
+## Output
+
+```{r}
+saveRDS(curation, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/curated_rse.xz", compress="xz")
+df <- df[-1,]
+write_csv(df, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/summary.csv")
+```
+
+## Session Info
+
+```{r}
+sessionInfo()
+# R version 4.0.2 (2020-06-22)
+# Platform: x86_64-pc-linux-gnu (64-bit)
+# Running under: CentOS Linux 7 (Core)
+
+# Matrix products: default
+# BLAS:   /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRblas.so
+# LAPACK: /cm/shared/apps/r/4.0.2-studio/lib64/R/lib/libRlapack.so
+
+# locale:
+ # [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ # [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ # [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ # [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ # [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+# [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+# attached base packages:
+# [1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+# [8] methods   base     
+
+# other attached packages:
+ # [1] forcats_0.5.1               stringr_1.4.0              
+ # [3] dplyr_1.0.3                 purrr_0.3.4                
+ # [5] readr_1.4.0                 tidyr_1.1.2                
+ # [7] tibble_3.1.3                ggplot2_3.3.5              
+  #[9] tidyverse_1.3.0             SummarizedExperiment_1.20.0
+# [11] Biobase_2.50.0              GenomicRanges_1.42.0       
+ #[13] GenomeInfoDb_1.26.7         IRanges_2.24.1             
+ #[15] S4Vectors_0.28.1            BiocGenerics_0.36.1        
+# [17] MatrixGenerics_1.2.1        matrixStats_0.60.0         
+ #[19] tximeta_1.8.5              
+
+# loaded via a namespace (and not attached):
+ # [1] fs_1.5.0                      ProtGenerics_1.22.0          
+ # [3] bitops_1.0-7                  lubridate_1.7.9.2            
+ # [5] bit64_4.0.5                   progress_1.2.2               
+ # [7] httr_1.4.2                    tools_4.0.2                  
+ # [9] backports_1.2.1               utf8_1.2.2                   
+ # [11] R6_2.5.0                      colorspace_2.0-2             
+ # [13] DBI_1.1.1                     lazyeval_0.2.2               
+ # [15] withr_2.4.2                   tidyselect_1.1.0             
+# [17] prettyunits_1.1.1             bit_4.0.4                    
+# [19] curl_4.3.2                    compiler_4.0.2               
+# [21] cli_3.0.1                     rvest_0.3.6                  
+# [23] xml2_1.3.2                    DelayedArray_0.16.3          
+# [25] rtracklayer_1.50.0            scales_1.1.1                 
+# [27] askpass_1.1                   rappdirs_0.3.3               
+# [29] digest_0.6.27                 Rsamtools_2.6.0              
+# [31] XVector_0.30.0                pkgconfig_2.0.3              
+# [33] htmltools_0.5.1.1             dbplyr_2.0.0                 
+# [35] fastmap_1.1.0                 ensembldb_2.14.0             
+# [37] readxl_1.3.1                  rlang_0.4.11                 
+# [39] rstudioapi_0.13               RSQLite_2.2.7                
+# [41] shiny_1.6.0                   generics_0.1.0               
+# [43] jsonlite_1.7.2                BiocParallel_1.24.1          
+# [45] RCurl_1.98-1.3                magrittr_2.0.1               
+# [47] GenomeInfoDbData_1.2.4        Matrix_1.3-4                 
+# [49] munsell_0.5.0                 Rcpp_1.0.7                   
+# [51] fansi_0.5.0                   lifecycle_1.0.0              
+# [53] stringi_1.6.2                 yaml_2.2.1                   
+# [55] zlibbioc_1.36.0               BiocFileCache_1.14.0         
+# [57] AnnotationHub_2.22.1          grid_4.0.2                   
+# [59] blob_1.2.1                    promises_1.2.0.1             
+# [61] crayon_1.4.1                  lattice_0.20-41              
+# [63] haven_2.3.1                   Biostrings_2.58.0            
+# [65] GenomicFeatures_1.42.1        hms_1.1.0                    
+# [67] pillar_1.6.2                  biomaRt_2.46.2               
+# [69] reprex_1.0.0                  XML_3.99-0.6                 
+# [71] glue_1.4.2                    BiocVersion_3.12.0           
+# [73] modelr_0.1.8                  BiocManager_1.30.16          
+# # [75] vctrs_0.3.8                   httpuv_1.6.1                 
+# [77] cellranger_1.1.0              gtable_0.3.0                 
+# [79] openssl_1.4.4                 assertthat_0.2.1             
+# [81] cachem_1.0.5                  mime_0.11                    
+# [83] xtable_1.8-4                  broom_0.7.9                  
+# [85] AnnotationFilter_1.14.0       later_1.2.0                  
+# [87] GenomicAlignments_1.26.0      AnnotationDbi_1.52.0         
+# [89] memoise_2.0.0                 tximport_1.18.0              
+# [91] ellipsis_0.3.2                interactiveDisplayBase_1.28.0
+```
+

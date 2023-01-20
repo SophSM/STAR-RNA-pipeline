@@ -1,0 +1,280 @@
+---
+title: "RNA2-pt2"
+author: "Sofia Salazar"
+date: "2022-11-10"
+output: html_document
+---
+
+## Setup
+
+```{bash}
+qlogin
+cd /mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files
+module load r/4.0.2
+R
+```
+
+## Obtaining the count matrixes for each studies
+
+For SRP111941, as it is a single-ended library, we only get the count matrix from a single folder, however, for the other remaining studies, we have pair ended libraries and we have three folders with counts, first for the paired reads, for the forward unpaired reads and the reverse unpaired reads which were generated through the trimming step.
+
+```{r}
+# SRP111941
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/STAR_output")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+f1 <- read.table(file=files[1], sep = "\t", header = F, as.is = T)
+f2 <- read.table(file=files[2], sep = "\t", header = F, as.is = T)
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+counts <- as.data.frame(counts)
+# Assigning the rows a name (the ID)
+rownames(counts) <- x[,1]
+
+# Assinging the columns a name
+# set the column names
+colnames(counts) <- sub(".fastq.*", "", files)
+
+# saving the counts
+save(counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP111941/SRP111941-counts.RData")
+```
+
+
+```{r}
+# SRP296987
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP296987/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+total.counts <- (counts + counts1)
+total.counts <- as.data.frame(total.counts + counts2)
+
+
+# Assigning the rows a name (the ID)
+rownames(total.counts) <- x[,1]
+
+# Assinging the columns a name
+# set the column names
+colnames(total.counts) <- sub("_.*", "", files)
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP296987-counts.RData")
+```
+
+```{r}
+# SRP311059
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP311059/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+tail(counts,1)
+tail(counts1,1)
+total.counts <- (counts + counts1)
+tail(total.counts,1)
+total.counts <- as.data.frame(total.counts + counts2)
+tail(counts2,1)
+tail(total.counts,1)
+
+# Assigning the rows a name (the ID)
+rownames(total.counts) <- x[,1]
+
+# Assinging the columns a name
+# set the column names
+colnames(total.counts) <- sub("_.*", "", files)
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP311059-counts.RData")
+```
+
+
+```{r}
+# SRP322015
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP322015/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+tail(counts,1)
+tail(counts1,1)
+total.counts <- (counts + counts1)
+tail(total.counts,1)
+total.counts <- as.data.frame(total.counts + counts2)
+tail(counts2,1)
+tail(total.counts,1)
+
+# Assigning the rows a name (the ID)
+rownames(total.counts) <- x[,1]
+
+# Assinging the columns a name
+# set the column names
+colnames(total.counts) <- sub("_.*", "", files)
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP322015-counts.RData")
+```
+
+```{r}
+# SRP168421
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_pe")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+
+counts <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts <- cbind(counts, x[,2])
+}
+# se1
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_se1")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts1 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts1 <- cbind(counts1, x[,2])
+}
+# se2 
+setwd("/mnt/Citosina/amedina/ssalazar/meta/RNA2/fastq_files/SRP168421/STAR_output_se2")
+files <- dir(pattern="ReadsPerGene.out.tab") # count files
+counts2 <- c()
+for( i in seq_along(files) ){
+  x <- read.table(file=files[i], sep="\t", header=F, as.is=T)
+  counts2 <- cbind(counts2, x[,2])
+}
+
+head(counts)
+tail(counts)
+dim(counts)
+class(counts)
+class(x) # the original count tab file from star
+
+# sum counts from unpaired and paired
+counts<-as.matrix(counts)
+counts1<-as.matrix(counts1)
+counts2<-as.matrix(counts2)
+
+tail(counts,1)
+tail(counts1,1)
+total.counts <- (counts + counts1)
+tail(total.counts,1)
+total.counts <- as.data.frame(total.counts + counts2)
+tail(counts2,1)
+tail(total.counts,1)
+
+# Assigning the rows a name (the ID)
+rownames(total.counts) <- x[,1]
+
+# Assinging the columns a name
+# set the column names
+colnames(total.counts) <- sub("_.*", "", files)
+
+# saving the counts
+save(total.counts, file = "/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP168421-counts.RData")
+```
+
+## Output
+
+The output files are in `/mnt/Citosina/amedina/ssalazar/meta/RNA2/SRP*-counts.RData`
+
